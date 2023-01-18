@@ -49,7 +49,7 @@ public class AccountService {
     return newAccount;
   }
 
-  private void sendSignUpConfirmEmail(Account newAccount) {
+  public void sendSignUpConfirmEmail(Account newAccount) {
     SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
     // 토큰값에 해당하는 이메일 주소 받기
     simpleMailMessage.setTo(newAccount.getEmail());
@@ -65,7 +65,8 @@ public class AccountService {
   // password 를 encoding 하기 때문에 아래의 방법으로 로그인함
   public void login(Account account) {
     UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
-                                                        account.getNickName(),
+                                                        // account.getNickName(),
+                                                        new UserAccount(account),
                                                         account.getPassword(),
                                                         List.of(new SimpleGrantedAuthority("ROLE_USER"))
                                                       );

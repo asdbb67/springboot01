@@ -451,6 +451,11 @@ C:\workspace\springboot\global\src\main\resources\static>
 
 
 
+.gitignore 에 아래 code 추가하기
+(버전관리에서 제외함)
+### NPM ###
+src/main/resources/static/node_modules
+
 
 
 pom.xml 에 아래 code (plugin) 추가
@@ -496,24 +501,201 @@ Security 설정하기
   public void configure(WebSecurity web) 메소드에
   .mvcMatchers("/node_modules/**") <-- 추가하기
 
-.gitignore 에 아래 code 추가하기
-(버전관리에서 제외함)
-### NPM ###
-src/main/resources/static/node_modules
+
+20230118
+
+[View 에서 중복되는 code 제거하기]
+
+thymeleaf fragment 사용
+
+  정의
+    th:fragment
+
+  사용
+    th:insert
+    th:replace
+
+  중복되는 부분
+    main navigation
+    head
+    footer
 
 [git - commit]
 
 index.html 위치를
-resource > templates 디렉토리로 이동
+resources > templates 디렉토리로 이동
 
-1)
 thymeleaf fragment 적용
-fragments.html 의 <head> 에
+1)
+fragments.html 의 <haed> 에
 th:fragment="head" 설정하고
-
 2)
-index.html의 <head>에
-<head th:replace="fragments.html :: head"
+index.html 의 <head> 에
+<head th:replace="fragments.html :: head"></head> 설정
+
+
+thymeleaf fragment 를
+index, sign-up, check-email html 에 적용함
+
+
+[View 에 code 추가하기]
+
+- navigation bar 에 fontawesome icon 적용
+    https://fontawesome.com/icons
+- 이메일 인증을 완료하지 않은 사용자에게 메세지 띄우기
+    bootstrap modal 창  <-- index.html 에 아래 code 추가함
+
+    <div class="alert alert-warning" role="alert" th:if="${account != null && !account.emailVarified}">
+      Study Cafe 에 가입을 완료하려면
+      <a href="#" th:href="@{/check-email}" class="alert-link">
+        계정 인증 메일을 확인
+      </a>하세요
+    </div>
+
+    th:if="${account != null && !account.emailVarified}
+      ㄴ 현재 인증된 사용자의 정보를 참조해서 실행됨
+
+- 프로필 기본 이미지 생성 <-- jdenticon
+    https://jdenticon.com/#icon-gobal
+
+npm install 로 라이브러리 설치하기
+  - npm install font-awesome@4.7.0
+  - npm install jdenticon@2.2.0
+
+  C:\Windows\system32>cd C:\workspace\springboot\global\src\main\resources\static
+
+  C:\workspace\springboot\global\src\main\resources\static>npm install font-awesome@4.7.0
+
+  added 1 package, and audited 5 packages in 556ms
+
+  2 packages are looking for funding
+    run `npm fund` for details
+
+  found 0 vulnerabilities
+
+  C:\workspace\springboot\global\src\main\resources\static>npm install jdenticon@2.2.0
+
+  added 3 packages, and audited 8 packages in 925ms
+
+  2 packages are looking for funding
+    run `npm fund` for details
+
+  found 0 vulnerabilities
+
+  C:\workspace\springboot\global\src\main\resources\static>
+
+
+fontawesome icon 사용
+  <i class="fa fa-OOOO"></i>
+
+Jdenticon 사용
+  <svg width="80" height="80" data-jdenticon-value="user127"></svg>
+
+Thymeleaf 조건문 사용하기
+  th:if
+  th:if="${account != null && !account.emailVarified}
+
+Bootstrap 으로 경고창 (modal 창) 띄우기
+- 이메일 인증을 완료하지 않은 사용자에게 메세지 띄우기
+    bootstrap modal 창  <-- index.html 에 아래 code 추가함
+
+
+[현재 인증된 사용자의 정보 참조하기]
+
+com.global.main.MainController 작성
+
+com.global.account.CurrentUser 작성
+
+@Retention(RetentionPolicy.RUNTIME)
+  AccountController Annotation 이
+  Runtime 에도 인식되도록 함
+
+@Target(ElementType.PARAMETER)
+  사용자가 만든 Annotation 이
+  부착될 수 있는 type  <-- PARAMETER 로 지정함
+
+
+Spring Security 의 Spring Web MVC 지원
+                              Model, View, Controller
+ <-- @AuthenticationPrincipal
+       ㄴ Handler parameter 로
+          현재 인증된 Principal 을 참조함
+                        ㄴ 인증할 때, Authentication 에 있는 첫 번째 parameter
+                                       ㄴ token 이 Authentication 으로 바뀜
+       ㄴ SpEL(Spring Expression Language : 스프링에서 사용하는 표현식) 을
+          사용해서 Principal 내부정보에 접근함
+       @AuthenticationPrincipal(expression = "#this" == 'anonymousUser' ? null : account")
+          ㄴ 익명(anonymousUser) 인 경우에는 null 로 설정하고
+             아닌 경우에는 account Property(멤버변수) 를 조회해서 설정하라는 의미
+
+
+public void login(Account account) {
+    UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
+인증할 때, Authentication 에 있는 첫 번째 parameter  <-- account.getNickName(),
+                                  ( ㄴ Principal )       account.getPassword(),
+                                                         List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                                                      );
+}
+
+@AuthenticationPrincipal(expression = "#this" == 'anonymousUser' ? null : account")
+  에서는 account Property(속성:멤버변수) 를 가져오는데
+  인증할 때, Authentication 에 있는 첫 번째 parameter(Principal) 는
+   account.getNickName() 이지, account 가 아님
+   ㄴ Account account 를 멤버변수로 하는 클래스(UserAccount)를 작성해야 함
+                                                 ㄴ com.global.account 패키지에 작성함
+
+public void login(Account account) {
+    UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
+인증할 때, Authentication 에 있는 첫 번째 parameter  <-- new UserAccount(account),  <-- 변경
+                                  ( ㄴ Principal )       account.getPassword(),
+                                                         List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                                                      );
+}
+
+public class UserAccount extends User 클래스의
+  private Account account;
+UserAccount 클래스의 멤버변수 이름 (account) 과
+
+@AuthenticationPrincipal(expression = "#this" == 'anonymousUser' ? null : account") 에서
+"#this" == 'anonymousUser' ? null : account"
+                                      ㄴ 이 부분이 일치해야 함
+
+
+[가입 확인 이메일 재전송]
+
+- 기입 확인 이메일을 재전송하는 기능
+- 1 시간에 한 번만 인증 이메일을 전송할 수 있도록 함
+
+GET"/checkout-email"
+  - 가입 확인 이메일을 전송한 메일 주소
+    (가입할 때 입력한 이메일 주소) 를 화면에 보여줌
+  - 재전송 버튼을 보여주고
+  - 재전송 버튼을 클릭하면 GET"/resend-confirm-email" 요청 전송함
+
+GET"/resend-confirm-email"
+  - 인증 메일을 다시 전송할 수 있는지 확인한 후
+  - 전송 가능하면 전송하고 첫 페이지로 redirect 함
+  - 전송할 수 없으면 에러 메세지를 Model 에 담고
+    이메일 확인 페이지를 다시 보여줌
+
+
+AccountController 에
+
+  @GetMapping("/checkout-email")
+  public String checkoutEmail(@CurrentUser Account account, Model model){
+    model.addAttribute("email", account.getEmail());
+    return "account/checkout-email";
+  }  <-- 추가
+
+
+
+
+
+
+
+
+
+
 
 
 
