@@ -8,8 +8,8 @@
   <title>GlobalIT</title>
   <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="/node_modules/font-awesome/css/font-awesome.min.css" />
-  <script src="node_modules/jquery/dist/jquery.min.js"></script>
-  <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/node_modules/jquery/dist/jquery.min.js"></script>
+  <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/node_modules/jdenticon/dist/jdenticon.min.js"></script>
   <style>
     .contaniter{
@@ -21,7 +21,7 @@
 
 <nav th:fragment="main-nav"  class="navbar navbar-expand-sm navbar-dark bg-dark">
   <a class="navbar-brand" href="/" th:href="@{/}">
-    <img src="/images/logo.png" width="30" height="30">
+    <img src="/images/logo.png" width="40" height="40">
   </a>
   <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent">
     <span class="navbar-toggler-icon"></span>
@@ -84,5 +84,39 @@
     <small class="d-block mb-3 text-muted">&copy; 2022</small>
   </div>
 </footer>
+
+<div th:fragment="settings-menu (currentMenu)" class="list-group">
+  <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'profile'} ? active" href="#" th:href="@{/settings/profile}" >프로필</a>
+  <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'password'} ? active" href="#" th:href="@{/settings/password}" >패스워드</a>
+  <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'notifications'} ? active" href="#" th:href="@{/settings/notifications}" >알림</a>
+  <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'tags'} ? active" href="#" th:href="@{/settings/tags}" >관심, 주제</a>
+  <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'zones'} ? active" href="#" th:href="@{/settings/zones}" >활동 지역</a>
+  <a class="list-group-item list-group-item-action list-group-item-danger" th:classappend="${currentMenu == 'account'} ? active" href="#" th:href="@{/settings/account}">계정</a>
+</div>
+
+<script type="application/javascript" th:fragment="form-validation">
+    (function () {
+      'use strict'
+
+      window.addEventListener('load', function(){
+        // 클래스이름이 needs-validation 인 element 들 가져오기
+        let forms = document.getElementsByClassName('needs-validation')
+
+        Array.prototype.filter.call(forms, function(form){
+          // submit 이벤트가 발생했을 때
+          form.addEventListener('submit', function(event){
+            // 해당 form 이 유효한지 검증하고, 유효하지 않으면
+            if(form.checkValidity() === false){
+              // 해당 form 이 submit 이 안 되도록 함
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            // was-validated 클래스 를 추가함
+            form.classList.add('was-validated')
+          }, false)
+        })
+      }, false)
+    }())
+  </script>
 </body>
 </html>
