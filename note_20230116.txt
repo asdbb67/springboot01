@@ -1241,11 +1241,203 @@ SecurityContextFactory 구현하기
        Authentication 작성하고 SecurityContext 에 넣음
 
 
-https://docs.spring.io/spring-security/site/docs/5.2.x/reference/html/test.html
+https://docs.spring.io/spring-security/site/docs/5.2.x/reference/html/test.html 문서 참고
+
 
 SettingsControllerTest 에서 updateProfile() 메소드에
 @WithUserDetails("global") 사용하기
 
 test 폴더 밑에 com.global 폴더에 작성함
 public class WithAccountSecurityContextFactory
+
+
+
+20230125
+
+SettingsControllerTest 클래스에
+
+프로필 수정 테스트 - 입력값에 오류가 있는 경우
+void updateProfile_error(),
+
+"프로필 수정 폼 테스트"
+void updateProfileForm()
+
+두 개의 메소드 추가하고 테스트 진행함
+
+
+[프로필 view 에서 사진 변경하기]
+
+화면에 입력하는 data 가 하나 추가되므로
+Profile 클래스에 멤버변수 하나 추가함
+  ㄴ private String profileImage;
+     생성자에도 추가함
+     this.profileImage = account.getProfileImage();
+
+settings/profile.html 에 div 태그 추가하기
+<!--
+ 사용자가 직접 입력하지 않고, cropper.js 사용하기
+  ㄴ npm install 로 cropper.js 설치해야 함
+  npm install cropper@4.1.0
+  npm install jquery-cropper@1.0.1
+-->
+<div class="form-group">
+  <input id="profileImage" type="hidden" th:field="*{profileImage}" class="from-control" />
+</div>
+
+BootStrap 에서 Card View 사용하기
+https://getbootstrap.com/docs/4.6/components/card/ 참고
+
+
+
+settings/profile.html 에
+javascript 작성
+
+profileImage 변경사항 DB 에 반영하기 위해서
+AccountService 의 public void updateProfile() 메소드에
+
+account.setProfileImage(profile.getProfileImage()); 추가
+
+네비게이션 오른쪽 끝에 작은 profileImage 도
+수정한 image 가 반영되도록
+fragments.html code 수정함
+
+<!-- account?. : user 가 null 이 아닌 경우를 의미함 -->
+<!-- profileImage 가 없으면 jdenticon 을 보여주고 -->
+<svg th:if="${#strings.isEmpty(account?.profileImage)}" data-jdenticon-value="user127"
+     th:data-jdenticon-value="${#authentication.name}" width="24" height="24" />
+<!-- profileImage 가 있으면 profileImage 를 보여줌 -->
+<img th:if="${!#strings.isEmpty(account?.profileImage)}" th:src="${account.profileImage}"
+    width="24" height="24" class="rounded border"/>
+
+
+[비밀번호 수정하기]
+
+비밀번호 변경을 위한 View 작성하기
+
+비밀번호 변경
+  - 비밀번호 탭 활성화하기
+  - 새로운 비밀번호와 새로운 비밀번호 확인 값이 일치해야 함
+  - 비밀번호 encoding
+  - 최소 8 자에서 최대 50자 이내
+  - 사용자 정보 변경하기
+    - 서비스로 위임해서 Transaction 안에서 처리하거나
+    - Detached 상태의 객체를 변경한 후 Repository 의 save 를 호출해서
+      상태 변경 내역을 적용함(Merge)
+
+SettingsController 클래스에서
+static final String SEETINGS_PASSWORD_VIEW = "settings/password";
+static final String SEETINGS_PASSWORD_URL = "settings/password";
+
+@GETMapping("SEETINGS_PASSWORD_URL")
+public String passwordUpdateForm() 메소드
+추가
+
+Form 으로 사용할 객체가 없음 -> Form 으로 사용할 클래스 작성하기
+com.global.settings.PasswordForm 클래스 작성함
+  @Length(min=8, max=50)
+  private String newPassword;
+  @Length(min=8, max=50)
+  private String newPasswordConfirm;
+
+새로운 비밀번호와 새로운 비밀번호 확인번호가 맞는지
+유효성 검사하는 클래스도 작성함
+com.global.settings.PasswordFormValidator
+
+SettingsController 에서
+@GetMapping(SETTINGS_PASSWORD_URL)
+public String updatePasswordForm()  메소드 작성함
+accountService.updatePassword() 를 호출한 뒤
+SETTINGS_PASSWORD_URL(/settings/password) 로 redirect 함
+
+
+settings/password.html 작성하기
+
+settings/profile.html 파일 편집함
+
+
+[비밀번호 수정 테스트하기]
+
+SettingsControllerTest 클래스에
+
+updatePassword_success(), updatePassword_fail() 메소드 작성하기
+
+settings/password.html code 수정 : currentMenu='password'
+<div class="col-2">
+  <div th:replace="fragments.html :: settings-menu (currentMenu='password')"></div>
+</div>
+
+SettingsController 클래스의
+public String updatePassword() 메소드 맨 밑에
+return "redirect:" + SETTINGS_PROFILE_URL; 을
+return "redirect:" + SETTINGS_PASSWORD_URL; 로 수정함
+
+
+
+[알림 설정 기능 구현하기]
+
+알림 설정 View 작성하기
+
+알림 설정
+  - 특정 웹 서비스 이벤트(스터디 생성, 참가 신청 결과, 참가 중인 스터디) 에 대한
+    정보를 이메일로 받을지, 웹 알림 메세지로 받을지 선택하기 - 둘 다 선택도 가능
+
+SettingsController 에
+static final String SETTING_NOTIFICATIONS_VIEW = "settings/notifications";
+static final String SETTING_NOTIFICATIONS_URL = "/settings/notifications";
+선언하기
+
+@GetMapping(SETTING_NOTIFICATIONS_URL)
+  public String updateNotificationsForm()
+@PostMapping(SETTING_NOTIFICATIONS_URL)
+  public String updateNotifications()
+ ㄴ 이 두 메소드 작성함
+
+updateNotifications() 에서 AccountService 의  updateNotifications() 메소드 호출
+  ㄴ Notifications 객체에 설정된 값으로 Account 객체의 정보를 갱신함
+
+Account 클래스에서 아래와 같이 설정하기
+  private boolean studyCreatedByWeb = true;
+  private boolean studyEnrollmentResultByWeb = true;
+  private boolean studyUpdatedByWeb = true;
+
+
+[ModelMapper 적용하기]
+
+modelmapper
+  ㄴ 객체의 property 를 다른 객체의 property 로 mapping 해 줌
+
+의존성을 추가함 (https://mvnrepository.com/ 에서 modelmapper 검색 후 버전 지정 code copy)
+<dependency>
+  <groupId>org.modelmapper</groupId>
+  <artifactId>modelmapper</artifactId>
+  <version>2.3.6</version>
+</dependency>
+
+Tokenizer 설정하기
+modelMapper.getConfiguration()
+  .setSourceNameTokenizer(NameTokenizers.UNDERSCORE)
+  .setDestinationNameTokenizer(NameTokenizer.UNDERSCORE)
+   ㄴ UNDERSCORE(_) 를 사용할 때만 nested 객체를 참조하는 것으로 인식하고
+                                   그 이외에는 해당 객체의 property 에 binding 함
+
+의존성을 다운로드한 후,
+(https://mvnrepository.com/ 에서 modelmapper 검색 후 버전 지정 code copy)
+
+AppConfig 클래스에
+
+  @Bean
+  public ModelMapper modelMapper(){   <-- 추가하기
+    return new ModelMapper();
+  }
+
+AccountService 에서
+ModelMapper 를 사용하고자 의존성 주입 받기 위해서
+멤버변수로 선언함
+
+AccountService 의 updateProfile(), updateNotifications() 메소드에서
+ModelMapper 사용하기 (https://modelmapper.org/getting-started/)
+
+
+
+
 
