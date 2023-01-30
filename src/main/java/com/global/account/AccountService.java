@@ -1,13 +1,14 @@
 package com.global.account;
 
 import com.global.domain.Account;
-import com.global.settings.Notifications;
-import com.global.settings.Profile;
+import com.global.domain.Tag;
+import com.global.domain.Zone;
+import com.global.settings.form.Notifications;
+import com.global.settings.form.Profile;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
@@ -16,13 +17,14 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.el.ELContext;
 import javax.validation.Valid;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
+import java.util.Set;
 
 // AccountService 클래스는 @Service 에 의해서
 // Bean 으로 등록되어 있음 (Bean : Spring 이 자동으로 생성하고 관리하는 객체)
@@ -167,6 +169,7 @@ public class AccountService implements UserDetailsService {
   public void updateNotifications(Account account, Notifications notifications) {
     modelMapper.map(notifications, account);
     // modelMapper.map(notifications, account); 에 의해서 아래의 code 를 생략함
+    //   notifications 에 있는 정보를 account 에 할당함
     /*
     account.setStudyCreatedByEmail(notifications.isStudyCreatedByEmail());
     account.setStudyCreatedByWeb(notifications.isStudyCreatedByWeb());
@@ -176,5 +179,76 @@ public class AccountService implements UserDetailsService {
     account.setStudyEnrollmentResultByWeb(notifications.isStudyEnrollmentResultByWeb());
     */
     accountRepository.save(account);
+  }
+
+  // SettingsController 의
+  // public String updateAccount() 메소드에서 updateNickName 호출함
+  public void updateNickName(Account account, String nickName) {
+    //  수정한 nickName 저장하기
+    account.setNickName(nickName);
+    //  수정한 nickName 을 DB 에 반영하기
+    //  Account 객체가 detached 객체라서 이 작업을 해야 DB 에 반영됨
+    //    ㄴ 명시적으로 save 해야 함  <-- save 할 때 merge 가 일어남
+    accountRepository.save(account);
+
+    // 새로 수정된 nickName 으로 login 을 해야 네비게이션 부분에 반영됨
+    login(account);
+  }
+  // AccountController 클래스의
+  // public String sendEmailLoginLink() 메소드에서 호출함
+  public void sendLoginLink(Account account) {
+    // token 을 새로 생성함
+    account.generateEmailCheckToken();
+    SimpleMailMessage simpleMailMessage = new SimpleMailMessage();
+    simpleMailMessage.setTo(account.getEmail());
+    simpleMailMessage.setSubject("Global Study Cafe 로그인 링크입니다");
+    // 이메일 링크에 새로 생성한 token 을 같이 보냄
+    simpleMailMessage.setText("/login-by-email?token=" + account.getEmailCheckToken() +
+                              "&email=" + account.getEmail());
+    javaMailSender.send(simpleMailMessage);
+  }
+
+  public void addTag(Account account, Tag tag) {
+    // Account 는 persistence 객체가 아니라서
+    // Account 를 먼저 읽어야 함
+    Optional<Account> byId = accountRepository.findById(account.getId());
+    // a 는 account 객체를 의미함 : account 객체에 tag 를 추가함
+    byId.ifPresent(a -> a.getTags().add(tag));
+  }
+
+  // public String updateTags() 메소드에서 호출함
+  public Set<Tag> getTags(Account account) {
+    Optional<Account> byId = accountRepository.findById(account.getId());
+
+    // 없으면 예외발생시키고, 있으면 tag 정보를 가져옴
+    return byId.orElseThrow().getTags();
+
+  }
+
+  // public ResponseEntity removeTag() 메소드에서 호출함
+  public void removeTag(Account account, Tag tag) {
+    Optional<Account> byId = accountRepository.findById(account.getId());
+    byId.ifPresent(a -> a.getTags().remove(tag));
+  }
+
+  // AccountService 의 getZone() 메소드 에서 호출함
+  // Account 가 가지고 있는 Zone 정보 가져오기
+  public Set<Zone> getZones(Account account) {
+    Optional<Account> byId = accountRepository.findById(account.getId());
+    return byId.orElseThrow().getZones();
+  }
+
+  // SettingsController 의 public ResponseEntity addZone() 메소드에서 호출함
+  public void addZone(Account account, Zone zone) {
+    Optional<Account> byId =  accountRepository.findById(account.getId());
+    // a 는 account 객체를 의미함
+    byId.ifPresent(a -> a.getZones().add(zone));
+  }
+
+  // SettingsController 의 public ResponseEntity removeZone() 메소드에서 호출함
+  public void removeZone(Account account, Zone zone) {
+    Optional<Account> byId =  accountRepository.findById(account.getId());
+    // a 는 account 객체를 의미함
+    byId.ifPresent(a -> a.getZones().remove(zone));
   }
 }

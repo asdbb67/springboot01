@@ -1,10 +1,14 @@
 package com.global.settings;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.global.WithAccount;
 import com.global.account.AccountRepository;
 import com.global.account.AccountService;
 import com.global.account.SignUpForm;
 import com.global.domain.Account;
+import com.global.domain.Zone;
+import com.global.settings.form.ZoneForm;
+import com.global.zone.ZoneRepository;
 import jdk.jshell.spi.ExecutionControlProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,16 +17,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.TestExecutionEvent;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.security.cert.X509Certificate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import static com.global.settings.SettingsController.ROOT;
+import static com.global.settings.SettingsController.SETTINGS;
+import static com.global.settings.SettingsController.ZONES;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,27 +45,46 @@ class SettingsControllerTest {
 
   @Autowired PasswordEncoder passwordEncoder;
 
+  @Autowired ObjectMapper objectMapper;
 
-/*
+  @Autowired AccountService accountService;
+
+
+
+  private Zone testZone = Zone.builder()
+                              .city("testCity")
+                              .localNameOfCity("테스트도시")
+                              .province("testProvince").build();
+  @Autowired
+  private ZoneRepository zoneRepository;
+
+
+  /*
+    @BeforeEach
+    void beforeEach(){
+
+
+       이 부분을 WithAccountSecurityContextFactory 클래스의
+       createSecurityContext() 메소드에서 진행함
+
+      SignUpForm signUpForm = new SignUpForm();
+      signUpForm.setNickName("global");
+      signUpForm.setEmail("global@gmail.com");
+      signUpForm.setPassword("12345678");
+      accountService.processNewAccount(signUpForm);
+
+
+    }
+  */
   @BeforeEach
   void beforeEach(){
-
-
-     이 부분을 WithAccountSecurityContextFactory 클래스의
-     createSecurityContext() 메소드에서 진행함
-
-    SignUpForm signUpForm = new SignUpForm();
-    signUpForm.setNickName("global");
-    signUpForm.setEmail("global@gmail.com");
-    signUpForm.setPassword("12345678");
-    accountService.processNewAccount(signUpForm);
-
-
+    zoneRepository.save(testZone);
   }
-*/
+
   @AfterEach
   void afterEach(){
     accountRepository.deleteAll();
+    zoneRepository.deleteAll();
   }
 
 
@@ -169,6 +199,99 @@ class SettingsControllerTest {
 
   }
 
+  @WithAccount("global")
+  @DisplayName("닉네임 폼 수정하기")
+  @Test
+  void updateAccountForm() throws Exception{
+    mockMvc.perform(get(SettingsController.SETTINGS_ACCOUNT_URL))
+      .andExpect(status().isOk())
+      .andExpect(model().attributeExists("account"))
+      .andExpect(model().attributeExists("nickNameForm"));
+  }
+
+  @WithAccount("global")
+  @DisplayName("닉네임 수정하기 테스트 - 입력값 정상인 경우")
+  @Test
+  void updateAccount_success() throws Exception{
+    String newNickName = "global2";
+    mockMvc.perform(post(SettingsController.SETTINGS_ACCOUNT_URL)
+          .param("nickName", newNickName)
+          .with(csrf()))
+          .andExpect(status().is3xxRedirection())
+          .andExpect(redirectedUrl(SettingsController.SETTINGS_ACCOUNT_URL))
+          .andExpect(flash().attributeExists("message"));
+    assertNotNull(accountRepository.findByNickName("global2"));
+  }
+
+  @WithAccount("global")
+  @DisplayName("닉네임 수정하기 테스트 - 입력값 오류인 경우")
+  @Test
+  void updateAccount_fail() throws Exception{
+    String newNickName = "(^$&@*^$&";
+    mockMvc.perform(post(SettingsController.SETTINGS_ACCOUNT_URL)
+          .param("nickName", newNickName)
+          .with(csrf()))
+          .andExpect(status().isOk())
+          .andExpect(view().name(SettingsController.SETTINGS_ACCOUNT_VIEW))
+          .andExpect(model().hasErrors())
+          .andExpect(model().attributeExists("account"))
+          .andExpect(model().attributeExists("nickNameForm"));
+
+  }
+
+  @WithAccount("global")
+  @DisplayName("지역 정보 수정 폼 테스트")
+  @Test
+  void updateZonesForm() throws Exception{
+    mockMvc.perform(get(ROOT + SETTINGS + ZONES))
+      .andExpect(view().name(SETTINGS + ZONES))
+      .andExpect(model().attributeExists("account"))
+      .andExpect(model().attributeExists("allZones"))
+      .andExpect(model().attributeExists("zones"));
+  }
+
+
+  @WithAccount("global")
+  @DisplayName("지역 정보 추가 테스트 - add")
+  @Test
+  void addZone() throws Exception{
+    // add 할 때, form 으로 입력받은 객체 생성함
+    ZoneForm zoneForm = new ZoneForm();
+    zoneForm.setZoneName(testZone.toString());
+
+    mockMvc.perform(post(ROOT + SETTINGS + ZONES + "/add")
+      .contentType(MediaType.APPLICATION_JSON)
+      .contentType(objectMapper.writeValueAsString(zoneForm))
+      .with(csrf()))
+      .andExpect(status().isOk());
+
+    Account global = accountRepository.findByNickName("global");
+    Zone zone = zoneRepository.findByCityAndProvince(testZone.getCity(), testZone.getProvince());
+    assertTrue(global.getZones().contains(zone));
+
+  }
+
+  @WithAccount("global")
+  @DisplayName("지역 정보 삭제 테스트 - remove")
+  @Test
+  void removeZone() throws Exception{
+    Account global = accountRepository.findByNickName("global");
+    Zone zone = zoneRepository.findByCityAndProvince(testZone.getCity(), testZone.getProvince());
+    accountService.addZone(global, zone);
+
+    // remove 할 때, form 으로 입력받은 객체 생성함
+    ZoneForm zoneForm = new ZoneForm();
+    zoneForm.setZoneName(testZone.toString());
+
+    mockMvc.perform(post(ROOT + SETTINGS + ZONES + "/remove")
+           .contentType(MediaType.APPLICATION_JSON)
+           .contentType(objectMapper.writeValueAsString(zoneForm))
+           .with(csrf()))
+           .andExpect(status().isOk());
+
+    assertFalse(global.getZones().contains(zone));
+
+  }
 }
 
 

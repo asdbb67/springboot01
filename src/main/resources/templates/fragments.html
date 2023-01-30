@@ -8,12 +8,23 @@
   <title>GlobalIT</title>
   <link rel="stylesheet" href="/node_modules/bootstrap/dist/css/bootstrap.min.css" />
   <link rel="stylesheet" href="/node_modules/font-awesome/css/font-awesome.min.css" />
+  <link rel="stylesheet" href="/node_modules/@yaireo/tagify/dist/tagify.css" />
   <script src="/node_modules/jquery/dist/jquery.min.js"></script>
   <script src="/node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    window.jdenticon_config = {
+        replaceMode: "observe"
+    };
+  </script>
   <script src="/node_modules/jdenticon/dist/jdenticon.min.js"></script>
   <style>
-    .contaniter{
+    .containter{
         max-width: 100%;
+    }
+    .tagify-outside{
+        border: 0;
+        padding: 0;
+        margin: 0;
     }
   </style>
 </head>
@@ -74,7 +85,7 @@
           <a class="dropdown-item" th:href="@{'/profile/' + ${#authentication.name}}">프로필</a>
           <a class="dropdown-item" >스터디</a>
           <div class="dropdown-divider"></div>
-          <a class="dropdown-item" href="#" th:href="@{'/settings/profile}">설정</a>
+          <a class="dropdown-item" href="#" th:href="@{'/settings/profile/'}">설정</a>
           <form class="from-inline my-2 my-lg-0" action="#" th:action="@{/logout}" method="post">
             <button class="dropdown-item" type="submit">로그아웃</button>
           </form>
@@ -93,7 +104,7 @@
 
 <div th:fragment="settings-menu (currentMenu)" class="list-group">
   <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'profile'} ? active" href="#" th:href="@{/settings/profile}" >프로필</a>
-  <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'password'} ? active" href="#" th:href="@{/settings/password}" >패스워드</a>
+  <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'password'} ? active" href="#" th:href="@{/settings/password}" >비밀번호</a>
   <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'notifications'} ? active" href="#" th:href="@{/settings/notifications}" >알림</a>
   <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'tags'} ? active" href="#" th:href="@{/settings/tags}" >관심, 주제</a>
   <a class="list-group-item list-group-item-action " th:classappend="${currentMenu == 'zones'} ? active" href="#" th:href="@{/settings/zones}" >활동 지역</a>
@@ -106,7 +117,7 @@
 
       window.addEventListener('load', function(){
         // 클래스이름이 needs-validation 인 element 들 가져오기
-        let forms = document.getElementsByClassName('needs-validation')
+        const forms = document.getElementsByClassName('needs-validation')
 
         Array.prototype.filter.call(forms, function(form){
           // submit 이벤트가 발생했을 때
@@ -124,5 +135,22 @@
       }, false)
     }())
   </script>
+
+  <!--
+    th:inline="javascript"
+          ㄴ javascript code 안에서 특정 model 이 들어있는 정보를 조회할 수 있음
+  -->
+  <script type="application/javascript" th:inline="javascript" th:fragment="ajax-csrf-header">
+
+    $(function(){
+      let csrfToken = /* [[${_csrf.token}]] */ null;
+      let csrfHeader = /* [[${_csrf.headerName}]] */ null;
+      $(document).ajaxSend(function (e, xhr, options) {
+        xhr.setRequestHeader(csrfHeader, csrfToken);
+      });
+    });
+
+  </script>
+
 </body>
 </html>
